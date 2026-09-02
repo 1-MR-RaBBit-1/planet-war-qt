@@ -1,0 +1,3 @@
+unset GTK_PATH
+unset GTK_EXE_PRIFIX
+unset GTK_IM_MODULE_FILE
