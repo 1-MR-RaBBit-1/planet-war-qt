@@ -4,7 +4,6 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    
     auto *view = new Qt3DExtras::Qt3DWindow();
     Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
     view->setRootEntity(rootEntity);
@@ -46,24 +45,60 @@ MainWindow::MainWindow(QWidget *parent)
     auto *camera = view->camera();
 
     camera->setPosition(
-        QVector3D(0, 0, 10)
+        QVector3D(0, 0, 20)
     );
 
     camera->setViewCenter(
         QVector3D(0, 0, 0)
     );
+    
+
+    Qt3DRender::QMesh *earthM = new Qt3DRender::QMesh();
+    earthM->setSource(QUrl("qrc:/models/earth.obj"));
+    Qt3DCore::QEntity *earthE = new Qt3DCore::QEntity(rootEntity);
+
+    Qt3DCore::QTransform *ETransform = new Qt3DCore::QTransform();
+    ETransform->setScale(0.5f);
+    ETransform->setTranslation(QVector3D(-3, 0, 0));
+
+    Qt3DRender::QTexture2D *ETexture = new Qt3DRender::QTexture2D();
+    Qt3DRender::QTextureImage *ETextureImage = new Qt3DRender::QTextureImage();
+    ETextureImage->setSource(QUrl("qrc:/models/earth.png"));
+    ETexture->addTextureImage(ETextureImage);
+    Qt3DExtras::QTextureMaterial *EMaterial= new Qt3DExtras::QTextureMaterial();
+    EMaterial->setTexture(ETexture);
+
+    earthE->addComponent(earthM);
+    earthE->addComponent(ETransform);
+    earthE->addComponent(EMaterial);
 
     connect(addM,&QPushButton::clicked,this,[=](){
-        Qt3DExtras::QSphereMesh *metoriteM = new Qt3DExtras::QSphereMesh();
+        Qt3DRender::QMesh *metoriteM = new Qt3DRender::QMesh();
+        metoriteM->setSource(QUrl("qrc:/models/metorate.obj"));
         Qt3DCore::QEntity *metoriteE = new Qt3DCore::QEntity(rootEntity);
-        metoriteM->setRadius(0.5f);
+        // metoriteM->setRadius(0.5f);
         Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
-        Qt3DExtras::QPhongMaterial *material1 = new Qt3DExtras::QPhongMaterial();
-        material1->setDiffuse(QColor(255,0,0));
+        transform->setScale(0.9f);
+        Qt3DRender::QTexture2D *texture = new Qt3DRender::QTexture2D();
+
+        Qt3DRender::QTextureImage *textureImage =
+            new Qt3DRender::QTextureImage();
+
+        textureImage->setSource(
+            QUrl("qrc:/models/meteor_texture.png")
+        );
+
+        texture->addTextureImage(textureImage);
+
+        Qt3DExtras::QTextureMaterial *material =
+            new Qt3DExtras::QTextureMaterial();
+
+        material->setTexture(texture);
+        // material1->setDiffuse(QColor(255,0,0));
 
         metoriteE->addComponent(metoriteM);
         metoriteE->addComponent(transform);
-        metoriteE->addComponent(material1);
+        metoriteE->addComponent(material);
     });
 
 
