@@ -1,129 +1,198 @@
-# Planet War 🚀
+# 🌍 Planet War
 
-A C++/Qt project that combines **TCP networking** with **Qt3D** to build the foundation of a simple 3D Planet War game.
+A 3D planet-based multiplayer game prototype built with **C++**, **Qt 6**, **Qt3D**, and **TCP networking**.
 
-This project is currently in the early development stage and focuses on learning and implementing Qt networking, Qt3D entities, materials, transformations, and GUI controls.
+The project is currently in development. The main goal is to create a simple networked game where players interact with planets and launch meteors toward each other.
+
+## ✨ Current Features
+
+* 🌍 3D Earth model rendering
+* ☄️ 3D meteor model rendering
+* 🎨 Texture support for Earth and meteor models
+* 🖥️ Qt3D-based 3D scene
+* 🌐 TCP server/client communication
+* 🔌 Custom server IP connection
+* 📡 Sending and receiving data using `QDataStream`
+* 🚀 Meteor movement animation using `QTimer`
+* 🖱️ Basic game control interface using Qt Widgets
+* 📦 Qt Resource System (`.qrc`) for 3D models and textures
 
 ## 🛠️ Technologies
 
-- C++
-- Qt 6
-- Qt Widgets
-- Qt Network
-- Qt3D
-- CMake
-- TCP
-- QDataStream
+* **C++17**
+* **Qt 6**
+* **Qt3D**
+* **Qt Widgets**
+* **Qt Network**
+* **CMake**
+* **TCP/IP**
+* **QDataStream**
+* **Blender** — 3D models and textures
 
-## 🎮 Current Features
-
-### TCP Server
-
-The project currently includes a TCP server using:
-
-- `QTcpServer`
-- `QTcpSocket`
-- `QDataStream`
-
-The server listens on:
+## 📂 Project Structure
 
 ```text
-127.0.0.1:5000
+planet-war-qt-main/
+│
+├── models/
+│   ├── earth.obj
+│   ├── earth.mtl
+│   ├── earth.png
+│   ├── metorate.obj
+│   ├── metorate.mtl
+│   └── meteor_texture.png
+│
+└── server/
+    ├── main.cpp
+    ├── mainwindow.cpp
+    ├── mainwindow.h
+    ├── resources.qrc
+    ├── CMakeLists.txt
+    └── build/
+```
 
-It can receive a QString from a TCP client and display the received message in the GUI.
+## 🎮 Current Gameplay
 
-Qt3D Scene
+The current prototype contains a 3D Earth and a meteor.
 
-A basic Qt3D scene has been created with:
+When a meteor is created, it is placed in the scene and can be launched using the **Fire** button.
 
-Qt3DWindow
-QEntity
-QSphereMesh
-QTransform
-QPhongMaterial
+Meteor movement is currently handled locally using a `QTimer`, allowing the meteor to move smoothly along the X axis.
 
-The camera is positioned to view the 3D scene.
+```cpp
+QVector3D pos = meteoriteTransform->translation();
 
-Meteorite System
+pos.setX(pos.x() + 0.05f);
 
-A basic meteorite creation system has been started.
+meteoriteTransform->setTranslation(pos);
+```
 
-Clicking Add Meteorite creates a red sphere inside the Qt3D scene.
+## 🌐 Networking
 
-Current structure:
+The project uses Qt's TCP networking classes:
 
-Meteorite Entity
-├── QSphereMesh
-├── QTransform
-└── QPhongMaterial
-🖥️ GUI
-
-The current interface contains:
-
-Qt3D scene
-Received message display
-IP address input
-Connect button
-Add Meteorite button
-Meteorite name input
-Fire button
-
-The controls are arranged using QGridLayout.
-
-📚 What I'm Learning
-
-This project is also a learning project for understanding:
-
-TCP client/server communication
-Qt signals and slots
-QTcpServer and QTcpSocket
+```cpp
+QTcpServer
+QTcpSocket
 QDataStream
-Qt layouts and widgets
-Qt3D entities and components
-3D meshes
-Materials
-Transforms
-Camera positioning
-Connecting GUI controls to 3D objects
-🚧 Current Status
+```
 
-The project is under active development.
+The server listens on a TCP port and accepts incoming clients.
 
-The current implementation is a prototype and several systems are not implemented yet.
+Currently, the project supports sending basic data such as `QString` between the client and server using `QDataStream`.
 
-Planned Features
- Connect to a remote server using an IP address
- Meteorite naming
- Multiple meteorites
- Meteorite positioning
- Meteorite movement
- Fire system
- Projectile system
- Collision detection
- Planet objects
- Player system
- Network synchronization
- Multiple clients
- Proper TCP message framing
- Connection and error handling
- Game logic
-📁 Project Structure
-planet-war-qt/
-├── client/
-│   └── ...
-├── server/
-│   ├── main.cpp
-│   ├── mainwindow.cpp
-│   ├── mainwindow.h
-│   └── ...
-├── CMakeLists.txt
-└── README.md
-⚠️ Note
+Example:
 
-This project is currently experimental and primarily intended for learning C++, Qt networking, and Qt3D.
+```cpp
+QDataStream stream(socket);
+stream << QString("Hello");
+```
 
-The architecture and implementation will change significantly as development continues.
+And on the receiving side:
 
-📜 License
+```cpp
+QDataStream stream(socket);
 
-This project is for educational purposes.
+QString text;
+stream >> text;
+```
+
+## 🖼️ 3D Models
+
+The 3D models are created/exported using **Blender** and loaded into Qt3D using `QMesh`.
+
+Example:
+
+```cpp
+Qt3DRender::QMesh *earthM = new Qt3DRender::QMesh();
+
+earthM->setSource(
+    QUrl("qrc:/models/earth.obj")
+);
+```
+
+Textures are loaded through Qt3D's texture system:
+
+```cpp
+Qt3DRender::QTexture2D *texture =
+    new Qt3DRender::QTexture2D();
+
+Qt3DRender::QTextureImage *textureImage =
+    new Qt3DRender::QTextureImage();
+
+textureImage->setSource(
+    QUrl("qrc:/models/meteor_texture.png")
+);
+
+texture->addTextureImage(textureImage);
+```
+
+## 🔨 Building
+
+Make sure Qt 6, Qt3D and CMake are installed.
+
+Clone the repository:
+
+```bash
+git clone https://github.com/USERNAME/planet-war-qt-main.git
+cd planet-war-qt-main/server
+```
+
+Create a build directory:
+
+```bash
+mkdir build
+cd build
+```
+
+Configure and build:
+
+```bash
+cmake ..
+cmake --build .
+```
+
+Run the server:
+
+```bash
+./server
+```
+
+## 📌 Project Status
+
+**Work in Progress 🚧**
+
+The current version is mainly a prototype for learning and implementing:
+
+* 3D rendering
+* Qt3D
+* TCP networking
+* Client/server architecture
+* Real-time object movement
+* Basic game mechanics
+
+Many gameplay and networking features are still planned.
+
+## 🗺️ Planned Features
+
+* [ ] Complete client-side gameplay
+* [ ] Synchronize meteor movement between server and client
+* [ ] Multiplayer gameplay
+* [ ] Player/planet interaction
+* [ ] Meteor collision detection
+* [ ] Health/damage system
+* [ ] Better camera and controls
+* [ ] Multiple meteors
+* [ ] Game state synchronization
+* [ ] Improved UI
+* [ ] Multiplayer game loop
+* [ ] Better resource/material handling
+* [ ] Game win/lose conditions
+
+## 📚 Purpose
+
+This project is being developed as a learning project to gain practical experience with **C++**, **Qt**, **Qt3D**, and **TCP networking**, while gradually building them into a playable multiplayer game.
+
+## 📄 License
+
+This project is currently intended for educational and personal development purposes.
