@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QInputDialog>
 #include <QDebug>
 #include <QMessageBox>
 #include <QLineEdit>
@@ -11,6 +12,7 @@
 #include <QPushButton>
 #include <QGridLayout>
 #include <QLabel>
+#include <QHBoxLayout>
 
 #include <Qt3DCore/QEntity>
 #include <Qt3DExtras/Qt3DWindow>
@@ -24,10 +26,6 @@
 #include <Qt3DExtras/QTextureMaterial>
 #include <QFile>
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -38,6 +36,7 @@ public:
 
 private:
     QTcpServer *server;
+    Qt3DCore::QTransform *meteoriteTransform = nullptr;
 };
 
 #endif // MAINWINDOW_H

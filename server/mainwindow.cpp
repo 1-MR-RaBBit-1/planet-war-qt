@@ -59,7 +59,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     Qt3DCore::QTransform *ETransform = new Qt3DCore::QTransform();
     ETransform->setScale(0.5f);
-    ETransform->setTranslation(QVector3D(-3, 0, 0));
+
+    //مختصات اولیه ی سیاره 
+    ETransform->setTranslation(QVector3D(0, 0, 0));
 
     Qt3DRender::QTexture2D *ETexture = new Qt3DRender::QTexture2D();
     Qt3DRender::QTextureImage *ETextureImage = new Qt3DRender::QTextureImage();
@@ -76,9 +78,16 @@ MainWindow::MainWindow(QWidget *parent)
         Qt3DRender::QMesh *metoriteM = new Qt3DRender::QMesh();
         metoriteM->setSource(QUrl("qrc:/models/metorate.obj"));
         Qt3DCore::QEntity *metoriteE = new Qt3DCore::QEntity(rootEntity);
+
+        meteoriteTransform = new Qt3DCore::QTransform();
+
+        meteoriteTransform->setScale(0.9f);
+        meteoriteTransform->setTranslation(QVector3D(-2, 0, 0));
+
         // metoriteM->setRadius(0.5f);
-        Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
-        transform->setScale(0.9f);
+        // Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
+        // // transform->setScale(0.9f);
+        // transform->setTranslation(QVector3D(-1.7,0,0));
         Qt3DRender::QTexture2D *texture = new Qt3DRender::QTexture2D();
 
         Qt3DRender::QTextureImage *textureImage =
@@ -97,7 +106,8 @@ MainWindow::MainWindow(QWidget *parent)
         // material1->setDiffuse(QColor(255,0,0));
 
         metoriteE->addComponent(metoriteM);
-        metoriteE->addComponent(transform);
+        // metoriteE->addComponent(transform);
+        metoriteE->addComponent(meteoriteTransform);
         metoriteE->addComponent(material);
     });
 
@@ -116,6 +126,26 @@ MainWindow::MainWindow(QWidget *parent)
     connect(server, &QTcpServer::newConnection, this, [=]() {
 
         QTcpSocket *clientSocket = server->nextPendingConnection();
+
+        ETransform->setTranslation(QVector3D(-4, 0, 0));
+        connect(Fire, &QPushButton::clicked, this, [=]() {
+
+                if (!meteoriteTransform)
+                    return;
+
+                auto *timer = new QTimer(this);
+
+                connect(timer, &QTimer::timeout, this, [=]() {
+
+                    QVector3D pos = meteoriteTransform->translation();
+
+                    pos.setX(pos.x() + 0.05f);
+
+                    meteoriteTransform->setTranslation(pos);
+                });
+
+                timer->start(16);
+            });
 
         connect(clientSocket, &QTcpSocket::readyRead, this, [=](){
             QDataStream stream(clientSocket);
