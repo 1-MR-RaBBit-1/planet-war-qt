@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>../models/earth.obj</file>
+        <file>../models/earth.png</file>
+        <file>../models/metorate.obj</file>
+        <file>../models/meteor_texture.png</file>
+    </qresource>
+</RCC>
