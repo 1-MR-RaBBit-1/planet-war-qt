@@ -25,6 +25,7 @@
 #include <Qt3DRender/QTexture>
 #include <Qt3DExtras/QTextureMaterial>
 #include <QFile>
+#include <QVector>
 
 class MainWindow : public QMainWindow
 {
@@ -36,7 +37,9 @@ public:
 
 private:
     QTcpServer *server;
-    Qt3DCore::QTransform *meteoriteTransform = nullptr;
+    QVector<Qt3DCore::QTransform*> meteoriteTransforms;
+    QVector<Qt3DCore::QEntity*> meteoriteEntities;
+    QVector<bool> meteoriteFired;
 };
 
 #endif // MAINWINDOW_H

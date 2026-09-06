@@ -77,12 +77,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(addM,&QPushButton::clicked,this,[=](){
         Qt3DRender::QMesh *metoriteM = new Qt3DRender::QMesh();
         metoriteM->setSource(QUrl("qrc:/models/metorate.obj"));
-        Qt3DCore::QEntity *metoriteE = new Qt3DCore::QEntity(rootEntity);
+        
+        auto *metoriteE = new Qt3DCore::QEntity(rootEntity);
 
-        meteoriteTransform = new Qt3DCore::QTransform();
+        auto *transform = new Qt3DCore::QTransform(metoriteE);
 
-        meteoriteTransform->setScale(0.9f);
-        meteoriteTransform->setTranslation(QVector3D(-2, 0, 0));
+        transform->setScale(0.9f);
+        transform->setTranslation(QVector3D(-2, 0, 0));
+
+        meteoriteEntities.append(metoriteE);
+        meteoriteTransforms.append(transform);
+        meteoriteFired.append(false);
 
         // metoriteM->setRadius(0.5f);
         // Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
@@ -107,7 +112,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         metoriteE->addComponent(metoriteM);
         // metoriteE->addComponent(transform);
-        metoriteE->addComponent(meteoriteTransform);
+        metoriteE->addComponent(transform);
         metoriteE->addComponent(material);
     });
 
@@ -123,29 +128,51 @@ MainWindow::MainWindow(QWidget *parent)
 
     qDebug() << "Server is listening...";
     
+    connect(Fire, &QPushButton::clicked, this, [=]() {
+        for (int i = 0; i < meteoriteFired.size(); i++) {
+
+        if (!meteoriteFired[i]) {
+
+            meteoriteFired[i] = true;
+
+            auto *transform = meteoriteTransforms[i];
+            auto *meteoriteE = meteoriteEntities[i];
+
+            auto *timer = new QTimer(this);
+
+            connect(timer, &QTimer::timeout, this, [=]() {
+
+                QVector3D pos = transform->translation();
+
+                qDebug() << "Meteorite" << i
+             << "X =" << pos.x();
+
+                pos.setX(pos.x() + 0.05f);
+
+                transform->setTranslation(pos);
+
+                if (pos.x() >= 12.0f) {
+
+                    timer->stop();
+                    timer->deleteLater();
+
+                    meteoriteE->deleteLater();
+
+                }
+            });
+
+            timer->start(16);
+
+            break;
+        }
+    }
+    });
+
     connect(server, &QTcpServer::newConnection, this, [=]() {
 
         QTcpSocket *clientSocket = server->nextPendingConnection();
 
         ETransform->setTranslation(QVector3D(-4, 0, 0));
-        connect(Fire, &QPushButton::clicked, this, [=]() {
-
-                if (!meteoriteTransform)
-                    return;
-
-                auto *timer = new QTimer(this);
-
-                connect(timer, &QTimer::timeout, this, [=]() {
-
-                    QVector3D pos = meteoriteTransform->translation();
-
-                    pos.setX(pos.x() + 0.05f);
-
-                    meteoriteTransform->setTranslation(pos);
-                });
-
-                timer->start(16);
-            });
 
         connect(clientSocket, &QTcpSocket::readyRead, this, [=](){
             QDataStream stream(clientSocket);
