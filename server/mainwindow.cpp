@@ -4,6 +4,12 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    clientSocket = nullptr;
+    meteoriteActive.resize(5);
+    meteoriteFired.resize(5);
+    meteoriteEntities.resize(5);
+    meteoriteTransforms.resize(5);
+
     auto *view = new Qt3DExtras::Qt3DWindow();
     Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
     view->setRootEntity(rootEntity);
@@ -74,28 +80,24 @@ MainWindow::MainWindow(QWidget *parent)
     earthE->addComponent(ETransform);
     earthE->addComponent(EMaterial);
 
-    connect(addM,&QPushButton::clicked,this,[=](){
-        Qt3DRender::QMesh *metoriteM = new Qt3DRender::QMesh();
-        metoriteM->setSource(QUrl("qrc:/models/metorate.obj"));
-        
-        auto *metoriteE = new Qt3DCore::QEntity(rootEntity);
 
-        auto *transform = new Qt3DCore::QTransform(metoriteE);
+    for (int i = 0; i < 5; i++) {
 
-        transform->setScale(0.9f);
-        transform->setTranslation(QVector3D(-2, 0, 0));
+        auto *meteoriteM = new Qt3DRender::QMesh();
+        meteoriteM->setSource(
+            QUrl("qrc:/models/metorate.obj")
+        );
 
-        meteoriteEntities.append(metoriteE);
-        meteoriteTransforms.append(transform);
-        meteoriteFired.append(false);
+        auto *meteoriteE =
+            new Qt3DCore::QEntity(rootEntity);
 
-        // metoriteM->setRadius(0.5f);
-        // Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
-        // // transform->setScale(0.9f);
-        // transform->setTranslation(QVector3D(-1.7,0,0));
-        Qt3DRender::QTexture2D *texture = new Qt3DRender::QTexture2D();
+        auto *transform =
+            new Qt3DCore::QTransform();
 
-        Qt3DRender::QTextureImage *textureImage =
+        auto *texture =
+            new Qt3DRender::QTexture2D();
+
+        auto *textureImage =
             new Qt3DRender::QTextureImage();
 
         textureImage->setSource(
@@ -104,17 +106,93 @@ MainWindow::MainWindow(QWidget *parent)
 
         texture->addTextureImage(textureImage);
 
-        Qt3DExtras::QTextureMaterial *material =
+        auto *material =
             new Qt3DExtras::QTextureMaterial();
 
         material->setTexture(texture);
-        // material1->setDiffuse(QColor(255,0,0));
 
-        metoriteE->addComponent(metoriteM);
-        // metoriteE->addComponent(transform);
-        metoriteE->addComponent(transform);
-        metoriteE->addComponent(material);
+        transform->setScale(0.9f);
+        transform->setTranslation(
+            QVector3D(-1.7f, 0, 0)
+        );
+
+        meteoriteE->addComponent(meteoriteM);
+        meteoriteE->addComponent(transform);
+        meteoriteE->addComponent(material);
+
+        meteoriteEntities[i] = meteoriteE;
+        meteoriteTransforms[i] = transform;
+
+        meteoriteActive[i] = false;
+        meteoriteFired[i] = false;
+
+        meteoriteE->setEnabled(false);
+    }
+
+
+    connect(addM,&QPushButton::clicked,this,[=](){
+        // for (int i = 0; i < 5; i++){
+        //     if (!meteoriteCreated[i]){
+        //         meteoriteCreated[i] = true;
+        //         Qt3DRender::QMesh *metoriteM = new Qt3DRender::QMesh();
+        //         metoriteM->setSource(QUrl("qrc:/models/metorate.obj"));
+        //         auto metoriteE = new Qt3DCore::QEntity(rootEntity);
+        //         // metoriteM->setRadius(0.5f);
+        //         auto transform = new Qt3DCore::QTransform();
+        
+        //         Qt3DRender::QTexture2D *texture = new Qt3DRender::QTexture2D();
+
+        //         Qt3DRender::QTextureImage *textureImage =
+        //             new Qt3DRender::QTextureImage();
+
+        //         textureImage->setSource(
+        //             QUrl("qrc:/models/meteor_texture.png")
+        //         );
+
+        //         transform->setScale(0.9f);
+        //         transform->setTranslation(QVector3D(-1.7,0,0));
+        
+
+        //         texture->addTextureImage(textureImage);
+
+        //         Qt3DExtras::QTextureMaterial *material =
+        //             new Qt3DExtras::QTextureMaterial();
+
+        //         material->setTexture(texture);
+        //         // material1->setDiffuse(QColor(255,0,0));
+
+        //         metoriteE->addComponent(metoriteM);
+        //         metoriteE->addComponent(transform);
+        //         metoriteE->addComponent(material);
+
+        //         // meteoriteEntities.append(metoriteE);
+        //         // meteoriteTransforms.append(transform);
+        //         // meteoriteFired.append(false);
+        //         meteoriteEntities[i] = metoriteE;
+        //         meteoriteTransforms[i] = transform;
+        //         meteoriteFired[i] = false;
+        //         meteoriteCreated[i] = true;
+        //     break;
+        //     }
+        // }
+
+        for (int i = 0; i < 5; i++) {
+
+            if (!meteoriteActive[i]) {
+
+                meteoriteActive[i] = true;
+                meteoriteFired[i] = false;
+
+                meteoriteTransforms[i]->setTranslation(QVector3D(-1.7f, 0, 0));
+
+                meteoriteEntities[i]->setEnabled(true);
+
+                break;
+            }
+        }
+
     });
+
 
 
     setWindowTitle("planet War");
@@ -129,12 +207,27 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << "Server is listening...";
     
     connect(Fire, &QPushButton::clicked, this, [=]() {
+
+        if (!clientSocket || clientSocket->state() != QAbstractSocket::ConnectedState) {
+            qDebug() << "Client is not connected!";
+            return;
+        }
         for (int i = 0; i < meteoriteFired.size(); i++) {
 
-        if (!meteoriteFired[i]) {
+        if (meteoriteActive[i] && !meteoriteFired[i]) {
+            MeteoriteData meteoriteData;
 
+            meteoriteData.id = i;
+            meteoriteData.position = meteoriteTransforms[i]->translation();
+            meteoriteData.direction = true;
+
+            if (clientSocket && clientSocket->state() == QAbstractSocket::ConnectedState){
+            QDataStream stream (clientSocket);
+            stream << meteoriteData.id;
+            stream << meteoriteData.position;
+            stream << meteoriteData.direction;
             meteoriteFired[i] = true;
-
+            }
             auto *transform = meteoriteTransforms[i];
             auto *meteoriteE = meteoriteEntities[i];
 
@@ -156,8 +249,13 @@ MainWindow::MainWindow(QWidget *parent)
                     timer->stop();
                     timer->deleteLater();
 
-                    meteoriteE->deleteLater();
+                    // meteoriteE->deleteLater();
+                    meteoriteE->setEnabled(false);
 
+                    meteoriteActive[i] = false;
+                    meteoriteFired[i] = false; 
+                    // meteoriteEntities[i] = nullptr;
+                    // meteoriteTransforms[i] = nullptr;
                 }
             });
 
@@ -170,7 +268,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(server, &QTcpServer::newConnection, this, [=]() {
 
-        QTcpSocket *clientSocket = server->nextPendingConnection();
+        clientSocket = server->nextPendingConnection();
 
         ETransform->setTranslation(QVector3D(-4, 0, 0));
 

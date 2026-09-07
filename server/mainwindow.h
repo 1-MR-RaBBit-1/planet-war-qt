@@ -27,6 +27,13 @@
 #include <QFile>
 #include <QVector>
 
+struct MeteoriteData
+{
+    int id;
+    QVector3D position;
+    bool direction;
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -37,9 +44,15 @@ public:
 
 private:
     QTcpServer *server;
+    QTcpSocket *clientSocket;
     QVector<Qt3DCore::QTransform*> meteoriteTransforms;
     QVector<Qt3DCore::QEntity*> meteoriteEntities;
+    QVector<Qt3DCore::QTransform*> RipenedMT;
+    QVector<Qt3DCore::QEntity*> RipenedME;
+    QVector<bool> Ripened;
     QVector<bool> meteoriteFired;
+    // QList<bool> meteoriteCreated;
+    QVector<bool> meteoriteActive;
 };
 
 #endif // MAINWINDOW_H
