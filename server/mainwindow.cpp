@@ -9,6 +9,8 @@ MainWindow::MainWindow(QWidget *parent)
     meteoriteFired.resize(5);
     meteoriteEntities.resize(5);
     meteoriteTransforms.resize(5);
+    RipenedME.resize(5);
+    RipenedMT.resize(5);
 
     auto *view = new Qt3DExtras::Qt3DWindow();
     Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
@@ -80,7 +82,7 @@ MainWindow::MainWindow(QWidget *parent)
     earthE->addComponent(ETransform);
     earthE->addComponent(EMaterial);
 
-
+    //send
     for (int i = 0; i < 5; i++) {
 
         auto *meteoriteM = new Qt3DRender::QMesh();
@@ -128,6 +130,53 @@ MainWindow::MainWindow(QWidget *parent)
 
         meteoriteE->setEnabled(false);
     }
+    
+
+    //ripend
+    for (int i = 0; i < 5; i++) {
+
+    auto *meteoriteM = new Qt3DRender::QMesh();
+    meteoriteM->setSource(
+        QUrl("qrc:/models/metorate.obj")
+    );
+
+    auto *meteoriteE =
+        new Qt3DCore::QEntity(rootEntity);
+
+    auto *transform =
+        new Qt3DCore::QTransform();
+
+    auto *texture =
+        new Qt3DRender::QTexture2D();
+
+    auto *textureImage =
+        new Qt3DRender::QTextureImage();
+
+    textureImage->setSource(
+        QUrl("qrc:/models/meteor_texture.png")
+    );
+
+    texture->addTextureImage(textureImage);
+
+    auto *material =
+        new Qt3DExtras::QTextureMaterial();
+
+    material->setTexture(texture);
+
+    transform->setScale(0.9f);
+    transform->setTranslation(
+        QVector3D(-1.7f, 0, 0)
+    );
+
+    meteoriteE->addComponent(meteoriteM);
+    meteoriteE->addComponent(transform);
+    meteoriteE->addComponent(material);
+
+    RipenedME[i] = meteoriteE;
+    RipenedMT[i] = transform;
+
+    meteoriteE->setEnabled(false);
+}
 
 
     connect(addM,&QPushButton::clicked,this,[=](){
