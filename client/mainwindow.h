@@ -45,6 +45,8 @@ private:
     QTcpSocket *socket;
     QVector<Qt3DCore::QTransform*> meteoriteTransforms;
     QVector<Qt3DCore::QEntity*> meteoriteEntities;
+    QVector<Qt3DCore::QTransform*> RipenedMT;
+    QVector<Qt3DCore::QEntity*> RipenedME;
     QVector<bool> Ripened;
     QVector<bool> meteoriteFired;
     // QList<bool> meteoriteCreated;

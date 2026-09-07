@@ -10,6 +10,8 @@ MainWindow::MainWindow(QWidget *parent)
     meteoriteEntities.resize(5);
     meteoriteTransforms.resize(5);
     Ripened.resize(5);
+    RipenedME.resize(5);
+    RipenedMT.resize(5);
 
     auto *view = new Qt3DExtras::Qt3DWindow();
     Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
@@ -84,6 +86,7 @@ MainWindow::MainWindow(QWidget *parent)
     earthE->addComponent(ETransform);
     earthE->addComponent(EMaterial);
 
+    //send
     for (int i = 0; i < 5; i++) {
 
         auto *meteoriteM = new Qt3DRender::QMesh();
@@ -128,6 +131,53 @@ MainWindow::MainWindow(QWidget *parent)
 
         meteoriteActive[i] = false;
         meteoriteFired[i] = false;
+
+        meteoriteE->setEnabled(false);
+    }
+
+
+    //ripend
+    for (int i = 0; i < 5; i++) {
+
+        auto *meteoriteM = new Qt3DRender::QMesh();
+        meteoriteM->setSource(
+            QUrl("qrc:/models/metorate.obj")
+        );
+
+        auto *meteoriteE =
+            new Qt3DCore::QEntity(rootEntity);
+
+        auto *transform =
+            new Qt3DCore::QTransform();
+
+        auto *texture =
+            new Qt3DRender::QTexture2D();
+
+        auto *textureImage =
+            new Qt3DRender::QTextureImage();
+
+        textureImage->setSource(
+            QUrl("qrc:/models/meteor_texture.png")
+        );
+
+        texture->addTextureImage(textureImage);
+
+        auto *material =
+            new Qt3DExtras::QTextureMaterial();
+
+        material->setTexture(texture);
+
+        transform->setScale(0.9f);
+        transform->setTranslation(
+            QVector3D(15.0f, 0, 0)
+        );
+
+        meteoriteE->addComponent(meteoriteM);
+        meteoriteE->addComponent(transform);
+        meteoriteE->addComponent(material);
+
+        RipenedME[i] = meteoriteE;
+        RipenedMT[i] = transform;
 
         meteoriteE->setEnabled(false);
     }
@@ -201,71 +251,139 @@ MainWindow::MainWindow(QWidget *parent)
     resize(500,500);
 
     socket = new QTcpSocket(this);
-    connect(socket,&QTcpSocket::readyRead,this,[=](){
+    
+
+    connect(socket, &QTcpSocket::readyRead, this, [=]() {
+
         QDataStream stream(socket);
-        while(socket->bytesAvailable() > 0){
-            int id;
-            QVector3D position;
-            bool direction;
-            stream >> id;
-            stream >> position;
-            stream >> direction;
-            qDebug() << "meteorite recieved!";
-            qDebug() << "ID: " << id ;
-            qDebug() << "POSITION: " << position;
-            qDebug() << "direction: " << direction;
+
+        stream.startTransaction();
+
+        int id;
+        QVector3D position;
+        bool direction;
+
+        stream >> id;
+        stream >> position;
+        stream >> direction;
+
+        if (!stream.commitTransaction()) {
+            return;
         }
+
+        qDebug() << "meteorite received!";
+        qDebug() << "ID:" << id;
+        qDebug() << "POSITION:" << position;
+        qDebug() << "DIRECTION:" << direction;
+
+        if (id < 0 || id >= RipenedME.size()) {
+            qDebug() << "Invalid meteorite ID!";
+            return;
+        }
+
+        if (!RipenedME[id] || !RipenedMT[id]) {
+            qDebug() << "Meteorite pointers are invalid!";
+            return;
+        }
+
+        auto *transform = RipenedMT[id];
+        auto *meteoriteE = RipenedME[id];
+
+        transform->setTranslation(
+            QVector3D(12.0f, 0, 0)
+        );
+
+        meteoriteE->setEnabled(true);
+
+        auto *timer = new QTimer(this);
+
+        connect(timer, &QTimer::timeout, this, [=]() {
+
+            QVector3D pos = transform->translation();
+
+            pos.setX(pos.x() - 0.05f);
+
+            transform->setTranslation(pos);
+
+            qDebug() << "Remote meteorite X =" << pos.x();
+
+            if (pos.x() <= position.x()) {
+
+                timer->stop();
+                timer->deleteLater();
+
+                qDebug() << "Remote meteorite reached target!";
+            }
+        });
+
+        timer->start(16);
     });
+
 
     connect(Fire,&QPushButton::clicked,this,[=](){
         for (int i = 0; i < meteoriteFired.size(); i++) {
 
-        if (meteoriteActive[i] && !meteoriteFired[i]) {
+            if (meteoriteActive[i] && !meteoriteFired[i]) {
 
-            meteoriteFired[i] = true;
+                meteoriteFired[i] = true;
 
-            auto *transform = meteoriteTransforms[i];
-            auto *meteoriteE = meteoriteEntities[i];
+                auto *transform = meteoriteTransforms[i];
+                auto *meteoriteE = meteoriteEntities[i];
 
-            MeteoriteData meteoriteData;
+                MeteoriteData meteoriteData;
 
-            meteoriteData.id = i;
-            meteoriteData.position = transform->translation();
-            meteoriteData.direction = true;
+                meteoriteData.id = i;
+                meteoriteData.position = transform->translation();
+                meteoriteData.direction = true;
 
-            auto *timer = new QTimer(this);
+                // send meteorite
+                if (socket->state() == QAbstractSocket::ConnectedState) {
 
-            connect(timer, &QTimer::timeout, this, [=]() {
+                    QDataStream stream(socket);
 
-                QVector3D pos = transform->translation();
+                    stream << meteoriteData.id;
+                    stream << meteoriteData.position;
+                    stream << meteoriteData.direction;
 
-                qDebug() << "Meteorite" << i
-             << "X =" << pos.x();
-
-                pos.setX(pos.x() + 0.05f);
-
-                transform->setTranslation(pos);
-
-                if (pos.x() >= 12.0f) {
-                    timer->stop();
-                    timer->deleteLater();
-
-                    // meteoriteE->deleteLater();
-                    meteoriteE->setEnabled(false);
-
-                    meteoriteActive[i] = false;
-                    meteoriteFired[i] = false; 
-                    // meteoriteEntities[i] = nullptr;
-                    // meteoriteTransforms[i] = nullptr;
-
+                    qDebug() << "Meteorite sent!";
+                    qDebug() << "ID:" << meteoriteData.id;
+                    qDebug() << "POSITION:" << meteoriteData.position;
+                    qDebug() << "DIRECTION:" << meteoriteData.direction;
                 }
-            });
 
-            timer->start(16);
+                auto *timer = new QTimer(this);
 
-            break;
+                connect(timer, &QTimer::timeout, this, [=]() {
+
+                    QVector3D pos = transform->translation();
+
+                    qDebug() << "Meteorite" << i
+                             << "X =" << pos.x();
+
+                    pos.setX(pos.x() + 0.05f);
+
+                    transform->setTranslation(pos);
+
+                    if (pos.x() >= 12.0f) {
+                        timer->stop();
+                        timer->deleteLater();
+
+                        // meteoriteE->deleteLater();
+                        meteoriteE->setEnabled(false);
+
+                        meteoriteActive[i] = false;
+                        meteoriteFired[i] = false; 
+                        // meteoriteEntities[i] = nullptr;
+                        // meteoriteTransforms[i] = nullptr;
+
+                    }
+                });
+
+                timer->start(16);
+
+                break;
+            }
         }
-    }
     });
 
     // socket->connectToHost(QHostAddress::LocalHost, 5000);
