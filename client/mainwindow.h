@@ -26,6 +26,12 @@
 #include <Qt3DExtras/QTextureMaterial>
 #include <QFile>
 
+struct MeteoriteData
+{
+    int id;
+    QVector3D position;
+    bool direction;
+};
 
 class MainWindow : public QMainWindow
 {
@@ -37,6 +43,13 @@ public:
 
 private:
     QTcpSocket *socket;
+    QVector<Qt3DCore::QTransform*> meteoriteTransforms;
+    QVector<Qt3DCore::QEntity*> meteoriteEntities;
+    QVector<bool> Ripened;
+    QVector<bool> meteoriteFired;
+    // QList<bool> meteoriteCreated;
+    QVector<bool> meteoriteActive;
+    
 };
 
 #endif // MAINWINDOW_H
