@@ -2,17 +2,17 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTcpServer>
 #include <QTcpSocket>
+#include <QTcpServer>
 #include <QInputDialog>
 #include <QDebug>
-#include <QMessageBox>
 #include <QLineEdit>
-#include <QVBoxLayout>
 #include <QPushButton>
+#include <QHBoxLayout>
+#include <QWidget>
+#include <QMessageBox>
 #include <QGridLayout>
 #include <QLabel>
-#include <QHBoxLayout>
 
 #include <Qt3DCore/QEntity>
 #include <Qt3DExtras/Qt3DWindow>
@@ -25,7 +25,6 @@
 #include <Qt3DRender/QTexture>
 #include <Qt3DExtras/QTextureMaterial>
 #include <QFile>
-#include <QVector>
 
 struct MeteoriteData
 {
@@ -53,6 +52,7 @@ private:
     QVector<bool> meteoriteFired;
     // QList<bool> meteoriteCreated;
     QVector<bool> meteoriteActive;
+    
 };
 
 #endif // MAINWINDOW_H
