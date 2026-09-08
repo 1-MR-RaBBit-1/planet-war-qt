@@ -4,7 +4,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-
+    clientSocket = nullptr;
     meteoriteActive.resize(5);
     meteoriteFired.resize(5);
     meteoriteEntities.resize(5);
@@ -18,39 +18,43 @@ MainWindow::MainWindow(QWidget *parent)
     view->setRootEntity(rootEntity);
     QWidget *Container = QWidget::createWindowContainer(view);
 
-
     QWidget *centralW = new QWidget(this);
     setCentralWidget(centralW);
     QVBoxLayout *VB1 = new QVBoxLayout(centralW);
+    QLineEdit *message = new QLineEdit(this);
+    message->setPlaceholderText("no message yet ...");
+    message->setReadOnly(true);
+
     QHBoxLayout *HB1 = new QHBoxLayout();
 
-    QLineEdit *message = new QLineEdit(centralW);
-    message->setPlaceholderText("pls enter somthing");
-    QPushButton *send = new QPushButton("send",centralW);
-    HB1->addWidget(message);
+    QLineEdit *sendmessage = new QLineEdit(centralW);
+    sendmessage->setPlaceholderText("pls enter somthing");
+    QPushButton *send = new QPushButton("send", centralW);
+    HB1->addWidget(sendmessage);
     HB1->addWidget(send);
 
     QGridLayout *control = new QGridLayout();
     
     QLabel *label1 = new QLabel("ip address:");
-    control->addWidget(label1,0,0);
+    control->addWidget(label1, 0, 0);
     QLineEdit *IpC = new QLineEdit();
-    control->addWidget(IpC,0,1);
+    control->addWidget(IpC, 0, 1);
     QPushButton *Connect = new QPushButton();
     Connect->setText("Connect");
-    control->addWidget(Connect, 0,2);
+    control->addWidget(Connect, 0, 2);
     QPushButton *addM = new QPushButton();
     addM->setText("add Metorate");
-    control->addWidget(addM, 1,0);
+    control->addWidget(addM, 1, 0);
     QLabel *label2 = new QLabel("metorate Name:");
-    control->addWidget(label2,1,1);
+    control->addWidget(label2, 1, 1);
     QLineEdit *metorateName = new QLineEdit();
-    control->addWidget(metorateName, 1,2);
+    control->addWidget(metorateName, 1, 2);
     QPushButton *Fire = new QPushButton();
     Fire->setText("Fire");
-    control->addWidget(Fire,1,3);
-    
+    control->addWidget(Fire, 1, 3);
+
     VB1->addWidget(Container);
+    VB1->addWidget(message);
     VB1->addLayout(HB1);
     VB1->addLayout(control);
 
@@ -79,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent)
     Qt3DRender::QTextureImage *ETextureImage = new Qt3DRender::QTextureImage();
     ETextureImage->setSource(QUrl("qrc:/models/earth.png"));
     ETexture->addTextureImage(ETextureImage);
-    Qt3DExtras::QTextureMaterial *EMaterial= new Qt3DExtras::QTextureMaterial();
+    Qt3DExtras::QTextureMaterial *EMaterial = new Qt3DExtras::QTextureMaterial();
     EMaterial->setTexture(ETexture);
 
     earthE->addComponent(earthM);
@@ -183,7 +187,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
 
-    connect(addM,&QPushButton::clicked,this,[=](){
+    connect(addM, &QPushButton::clicked, this, [=](){
         // for (int i = 0; i < 5; i++){
         //     if (!meteoriteCreated[i]){
         //         meteoriteCreated[i] = true;
@@ -248,108 +252,88 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     setWindowTitle("planet War");
-    resize(500,500);
+    resize(500, 500);
 
-    socket = new QTcpSocket(this);
-    
-
-    connect(socket, &QTcpSocket::readyRead, this, [=]() {
-
-        QDataStream stream(socket);
-
-        stream.startTransaction();
-
-        int id;
-        QVector3D position;
-        bool direction;
-
-        stream >> id;
-        stream >> position;
-        stream >> direction;
-
-        if (!stream.commitTransaction()) {
+    //دکمه send (ارسال پیام) 
+    // اینجا یک بار برای همیشه connect می‌شود
+    connect(send, &QPushButton::clicked, this, [=](){
+        if (!clientSocket || clientSocket->state() != QAbstractSocket::ConnectedState) {
+            qDebug() << "Not connected!";
             return;
         }
-
-        qDebug() << "meteorite received!";
-        qDebug() << "ID:" << id;
-        qDebug() << "POSITION:" << position;
-        qDebug() << "DIRECTION:" << direction;
-
-        if (id < 0 || id >= RipenedME.size()) {
-            qDebug() << "Invalid meteorite ID!";
-            return;
-        }
-
-        if (!RipenedME[id] || !RipenedMT[id]) {
-            qDebug() << "Meteorite pointers are invalid!";
-            return;
-        }
-
-        auto *transform = RipenedMT[id];
-        auto *meteoriteE = RipenedME[id];
-
-        transform->setTranslation(
-            QVector3D(12.0f, 0, 0)
-        );
-
-        meteoriteE->setEnabled(true);
-
-        auto *timer = new QTimer(this);
-
-        connect(timer, &QTimer::timeout, this, [=]() {
-
-            QVector3D pos = transform->translation();
-
-            pos.setX(pos.x() - 0.05f);
-
-            transform->setTranslation(pos);
-
-            qDebug() << "Remote meteorite X =" << pos.x();
-
-            if (pos.x() <= position.x()) {
-
-                timer->stop();
-                timer->deleteLater();
-
-                qDebug() << "Remote meteorite reached target!";
-            }
-        });
-
-        timer->start(16);
+        QDataStream stream(clientSocket);
+        stream << 1;  // نوع پیام: متن
+        QString text = sendmessage->text();
+        stream << text;
+        sendmessage->clear();
+        qDebug() << "Text sent:" << text;
     });
 
+    //  سرور 
+    server = new QTcpServer(this);
 
-    connect(Fire,&QPushButton::clicked,this,[=](){
-        for (int i = 0; i < meteoriteFired.size(); i++) {
+    // برای برنامه اول: 127.0.0.1
+    // برای برنامه دوم: 127.0.0.2
+    server->listen(QHostAddress("127.0.0.2"), 5000);
 
-            if (meteoriteActive[i] && !meteoriteFired[i]) {
+    qDebug() << "Server is listening...";
 
-                meteoriteFired[i] = true;
+    connect(server, &QTcpServer::newConnection, this, [=]() {
 
-                auto *transform = meteoriteTransforms[i];
-                auto *meteoriteE = meteoriteEntities[i];
+        clientSocket = server->nextPendingConnection();
 
-                MeteoriteData meteoriteData;
+        ETransform->setTranslation(QVector3D(-4, 0, 0));
 
-                meteoriteData.id = i;
-                meteoriteData.position = transform->translation();
-                meteoriteData.direction = true;
+        connect(clientSocket, &QTcpSocket::readyRead, this, [=](){
+            QDataStream stream(clientSocket);
+            
+            int msgType;
+            stream >> msgType;
+            
+            if (msgType == 1) {
+                QString text;
+                stream >> text;
+                message->setText(text);
+                qDebug() << "Text received:" << text;
+            }
+            else if (msgType == 2) {
+                stream.startTransaction();
 
-                // send meteorite
-                if (socket->state() == QAbstractSocket::ConnectedState) {
+                int id;
+                QVector3D position;
+                bool direction;
 
-                    QDataStream stream(socket);
+                stream >> id;
+                stream >> position;
+                stream >> direction;
 
-                    stream << meteoriteData.id;
-                    stream << meteoriteData.position;
-                    stream << meteoriteData.direction;
-
-                    qDebug() << "Meteorite sent!";
-                    qDebug() << "ID:" << meteoriteData.id;
-                    qDebug() << "POSITION:" << meteoriteData.position;
-                    qDebug() << "DIRECTION:" << meteoriteData.direction;
+                if (!stream.commitTransaction()) {
+                    return;
                 }
+
+                qDebug() << "meteorite received!";
+                qDebug() << "ID:" << id;
+                qDebug() << "POSITION:" << position;
+                qDebug() << "DIRECTION:" << direction;
+
+                if (id < 0 || id >= RipenedME.size()) {
+                    qDebug() << "Invalid meteorite ID!";
+                    return;
+                }
+
+                if (!RipenedME[id] || !RipenedMT[id]) {
+                    qDebug() << "Meteorite pointers are invalid!";
+                    return;
+                }
+
+                auto *transform = RipenedMT[id];
+                auto *meteoriteE = RipenedME[id];
+
+                transform->setTranslation(
+                    QVector3D(15.0f, 0, 0)
+                );
+
+                meteoriteE->setEnabled(true);
 
                 auto *timer = new QTimer(this);
 
@@ -357,14 +341,137 @@ MainWindow::MainWindow(QWidget *parent)
 
                     QVector3D pos = transform->translation();
 
-                    qDebug() << "Meteorite" << i
-                             << "X =" << pos.x();
+                    pos.setX(pos.x() - 0.05f);
+
+                    transform->setTranslation(pos);
+
+                    qDebug() << "Remote meteorite X =" << pos.x();
+
+                    if (pos.x() <= position.x()) {
+
+                        timer->stop();
+                        timer->deleteLater();
+
+                        qDebug() << "Remote meteorite reached target!";
+                    }
+                });
+
+                timer->start(16);
+            }
+        });
+
+        connect(clientSocket, &QTcpSocket::connected, this, [=]() {
+            ETransform->setTranslation(QVector3D(-4, 0, 0));
+            qDebug() << "Connected to server!";
+        });
+
+        qDebug() << "Client connected!";
+    });
+
+    //  دکمه Connect (اتصال به عنوان کلاینت) 
+    connect(Connect, &QPushButton::clicked, this, [=](){
+        QString ip = IpC->text().trimmed();
+        if(ip.isEmpty()){
+            qDebug() << "Please enter server IP!";
+            return;
+        }
+        
+        if (!clientSocket) {
+            clientSocket = new QTcpSocket(this);
+            
+            connect(clientSocket, &QTcpSocket::readyRead, this, [=](){
+                QDataStream stream(clientSocket);
+                
+                int msgType;
+                stream >> msgType;
+                
+                if (msgType == 1) {
+                    QString text;
+                    stream >> text;
+                    message->setText(text);
+                    qDebug() << "Text received (client):" << text;
+                }
+                else if (msgType == 2) {
+                    int id;
+                    QVector3D position;
+                    bool direction;
+                    stream >> id >> position >> direction;
+                    
+                    qDebug() << "Meteorite received! ID:" << id;
+                    
+                    if (id >= 0 && id < RipenedME.size() && RipenedME[id] && RipenedMT[id]) {
+                        auto *transform = RipenedMT[id];
+                        auto *meteoriteE = RipenedME[id];
+                        transform->setTranslation(QVector3D(15.0f, 0, 0));
+                        meteoriteE->setEnabled(true);
+                        
+                        auto *timer = new QTimer(this);
+                        connect(timer, &QTimer::timeout, this, [=]() {
+                            QVector3D pos = transform->translation();
+                            pos.setX(pos.x() - 0.05f);
+                            transform->setTranslation(pos);
+                            if (pos.x() <= position.x()) {
+                                timer->stop();
+                                timer->deleteLater();
+                            }
+                        });
+                        timer->start(16);
+                    }
+                }
+            });
+            
+            connect(clientSocket, &QTcpSocket::connected, this, [=]() {
+                ETransform->setTranslation(QVector3D(-4, 0, 0));
+                qDebug() << "Connected to server!";
+            });
+        }
+        
+        qDebug() << "Connecting to:" << ip;
+        clientSocket->connectToHost(ip, 5000);
+    });
+
+    //  دکمه Fire (پرتاب شهاب‌سنگ) 
+    connect(Fire, &QPushButton::clicked, this, [=]() {
+
+        if (!clientSocket || clientSocket->state() != QAbstractSocket::ConnectedState) {
+            qDebug() << "Client is not connected!";
+            return;
+        }
+        for (int i = 0; i < meteoriteFired.size(); i++) {
+
+            if (meteoriteActive[i] && !meteoriteFired[i]) {
+                MeteoriteData meteoriteData;
+
+                meteoriteData.id = i;
+                meteoriteData.position = meteoriteTransforms[i]->translation();
+                meteoriteData.direction = true;
+
+                if (clientSocket && clientSocket->state() == QAbstractSocket::ConnectedState){
+                    QDataStream stream(clientSocket);
+                    stream << 2;  // نوع پیام: شهاب‌سنگ
+                    stream << meteoriteData.id;
+                    stream << meteoriteData.position;
+                    stream << meteoriteData.direction;
+                    meteoriteFired[i] = true;
+                    qDebug() << "Meteorite sent! ID:" << i;
+                }
+                auto *transform = meteoriteTransforms[i];
+                auto *meteoriteE = meteoriteEntities[i];
+
+                auto *timer = new QTimer(this);
+
+                connect(timer, &QTimer::timeout, this, [=]() {
+
+                    QVector3D pos = transform->translation();
+
+                    qDebug() << "Meteorite" << i << "X =" << pos.x();
 
                     pos.setX(pos.x() + 0.05f);
 
                     transform->setTranslation(pos);
 
                     if (pos.x() >= 12.0f) {
+
                         timer->stop();
                         timer->deleteLater();
 
@@ -375,7 +482,6 @@ MainWindow::MainWindow(QWidget *parent)
                         meteoriteFired[i] = false; 
                         // meteoriteEntities[i] = nullptr;
                         // meteoriteTransforms[i] = nullptr;
-
                     }
                 });
 
@@ -384,30 +490,6 @@ MainWindow::MainWindow(QWidget *parent)
                 break;
             }
         }
-    });
-
-    // socket->connectToHost(QHostAddress::LocalHost, 5000);
-    connect(Connect,&QPushButton::clicked,this,[=](){
-        QString ip = IpC->text().trimmed();
-        if(ip.isEmpty()){
-            qDebug() << "Please enter server IP!";
-            return;
-        }
-        qDebug() << "Connecting to:" << ip;
-        socket->connectToHost(ip, 5000);
-
-    });
-
-    connect(socket, &QTcpSocket::connected, this, [=]() {
-        ETransform->setTranslation(QVector3D(-4, 0, 0));
-        qDebug() << "Connected to server!";
-        // QString text = QInputDialog::getText(this,"Send Data","Enter something:");
-        connect(send,&QPushButton::clicked,this,[=](){
-            QDataStream stream(socket);
-            QString text = message->text();
-            stream << text;
-            message->clear();
-        });
     });
 }
 

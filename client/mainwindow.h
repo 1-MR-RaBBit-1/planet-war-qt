@@ -42,7 +42,8 @@ public:
     ~MainWindow();
 
 private:
-    QTcpSocket *socket;
+    QTcpServer *server;
+    QTcpSocket *clientSocket;
     QVector<Qt3DCore::QTransform*> meteoriteTransforms;
     QVector<Qt3DCore::QEntity*> meteoriteEntities;
     QVector<Qt3DCore::QTransform*> RipenedMT;
