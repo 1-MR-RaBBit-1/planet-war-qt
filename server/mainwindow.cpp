@@ -340,7 +340,6 @@ MainWindow::MainWindow(QWidget *parent)
                 qDebug() << "Text received:" << text;
 
                 //  فقط شهاب‌سنگ دریافتی نابود می‌شود 
-                // شهاب‌سنگ خودی (meteoriteEntities) اصلاً دست نمی‌خورد
                 for (int i = 0; i < RipenedNames.size(); i++) {
 
                     if (RipenedNames[i] == text) {
