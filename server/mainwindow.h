@@ -31,6 +31,7 @@ struct MeteoriteData
     int id;
     QVector3D position;
     bool direction;
+    QString name;
 };
 
 class MainWindow : public QMainWindow
@@ -52,6 +53,8 @@ private:
     QVector<bool> meteoriteFired;
     // QList<bool> meteoriteCreated;
     QVector<bool> meteoriteActive;
+    QVector<QString> meteoriteNames;
+    QVector<QString> RipenedNames;
     
 };
 

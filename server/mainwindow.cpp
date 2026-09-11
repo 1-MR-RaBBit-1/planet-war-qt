@@ -9,9 +9,11 @@ MainWindow::MainWindow(QWidget *parent)
     meteoriteFired.resize(5);
     meteoriteEntities.resize(5);
     meteoriteTransforms.resize(5);
+    meteoriteNames.resize(5);
     Ripened.resize(5);
     RipenedME.resize(5);
     RipenedMT.resize(5);
+    RipenedNames.resize(5);
 
     auto *view = new Qt3DExtras::Qt3DWindow();
     Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
@@ -218,9 +220,9 @@ MainWindow::MainWindow(QWidget *parent)
         //         material->setTexture(texture);
         //         // material1->setDiffuse(QColor(255,0,0));
 
-        //         metoriteE->addComponent(metoriteM);
-        //         metoriteE->addComponent(transform);
-        //         metoriteE->addComponent(material);
+        //         metorateE->addComponent(metoriteM);
+        //         metorateE->addComponent(transform);
+        //         metorateE->addComponent(material);
 
         //         // meteoriteEntities.append(metoriteE);
         //         // meteoriteTransforms.append(transform);
@@ -233,10 +235,18 @@ MainWindow::MainWindow(QWidget *parent)
         //     }
         // }
 
+        QString name = metorateName->text().trimmed();
+
+        if (name.isEmpty()) {
+            qDebug() << "Meteorite must have a name!";
+            return;
+        }
+
         for (int i = 0; i < 5; i++) {
 
             if (!meteoriteActive[i]) {
 
+                meteoriteNames[i] = name;
                 meteoriteActive[i] = true;
                 meteoriteFired[i] = false;
 
@@ -247,6 +257,7 @@ MainWindow::MainWindow(QWidget *parent)
                 break;
             }
         }
+        metorateName->clear();
 
     });
 
@@ -261,10 +272,39 @@ MainWindow::MainWindow(QWidget *parent)
             qDebug() << "Not connected!";
             return;
         }
+
+        QString text = sendmessage->text().trimmed();
+        if (text.isEmpty()) {
+            return;
+        }
+
+        //  فقط شهاب‌سنگ دریافتی خودم را نابود کن 
+        // به meteoriteEntities (شهاب‌سنگ خودی) کاری نداشته باش
+        for (int i = 0; i < RipenedNames.size(); i++) {
+
+            if (RipenedNames[i] == text) {
+
+                qDebug() << "Destroying my incoming meteorite:" << text;
+                qDebug() << "ID:" << i;
+
+                if (RipenedME[i]) {
+                    RipenedME[i]->setEnabled(false);
+                }
+
+                RipenedNames[i].clear();
+                Ripened[i] = false;
+
+                qDebug() << "Incoming meteorite destroyed!";
+
+                break;
+            }
+        }
+
+        //  پیام را به طرف مقابل بفرست 
         QDataStream stream(clientSocket);
         stream << 1;  // نوع پیام: متن
-        QString text = sendmessage->text();
         stream << text;
+
         sendmessage->clear();
         qDebug() << "Text sent:" << text;
     });
@@ -291,43 +331,75 @@ MainWindow::MainWindow(QWidget *parent)
             stream >> msgType;
             
             if (msgType == 1) {
+
                 QString text;
                 stream >> text;
+
                 message->setText(text);
+
                 qDebug() << "Text received:" << text;
+
+                //  فقط شهاب‌سنگ دریافتی نابود می‌شود 
+                // شهاب‌سنگ خودی (meteoriteEntities) اصلاً دست نمی‌خورد
+                for (int i = 0; i < RipenedNames.size(); i++) {
+
+                    if (RipenedNames[i] == text) {
+
+                        qDebug() << "Received meteorite found!";
+                        qDebug() << "ID:" << i;
+                        qDebug() << "Name:" << RipenedNames[i];
+
+                        if (RipenedME[i]) {
+                            RipenedME[i]->setEnabled(false);
+                        }
+
+                        RipenedNames[i].clear();
+                        Ripened[i] = false;
+
+                        qDebug() << "Remote meteorite destroyed!";
+
+                        break;
+                    }
+                }
             }
             else if (msgType == 2) {
                 stream.startTransaction();
 
-                int id;
-                QVector3D position;
-                bool direction;
-
-                stream >> id;
-                stream >> position;
-                stream >> direction;
+                // int id;
+                // QVector3D position;
+                // bool direction;
+                MeteoriteData data;
+                stream >> data.id;
+                stream >> data.name;
+                stream >> data.position;
+                stream >> data.direction;
 
                 if (!stream.commitTransaction()) {
                     return;
                 }
 
                 qDebug() << "meteorite received!";
-                qDebug() << "ID:" << id;
-                qDebug() << "POSITION:" << position;
-                qDebug() << "DIRECTION:" << direction;
+                qDebug() << "ID:" << data.id;
+                qDebug() << "NAME:" << data.name;
+                qDebug() << "POSITION:" << data.position;
+                qDebug() << "DIRECTION:" << data.direction;
 
-                if (id < 0 || id >= RipenedME.size()) {
+                if (data.id < 0 || data.id >= RipenedME.size()) {
                     qDebug() << "Invalid meteorite ID!";
                     return;
                 }
 
-                if (!RipenedME[id] || !RipenedMT[id]) {
+                if (!RipenedME[data.id] || !RipenedMT[data.id]) {
                     qDebug() << "Meteorite pointers are invalid!";
                     return;
                 }
 
-                auto *transform = RipenedMT[id];
-                auto *meteoriteE = RipenedME[id];
+                // اسم شهاب‌سنگ دریافتی را ذخیره می‌کنیم
+                RipenedNames[data.id] = data.name;
+                Ripened[data.id] = true;
+
+                auto *transform = RipenedMT[data.id];
+                auto *meteoriteE = RipenedME[data.id];
 
                 transform->setTranslation(
                     QVector3D(15.0f, 0, 0)
@@ -347,7 +419,7 @@ MainWindow::MainWindow(QWidget *parent)
 
                     qDebug() << "Remote meteorite X =" << pos.x();
 
-                    if (pos.x() <= position.x()) {
+                    if (pos.x() <= data.position.x()) {
 
                         timer->stop();
                         timer->deleteLater();
@@ -380,41 +452,87 @@ MainWindow::MainWindow(QWidget *parent)
             clientSocket = new QTcpSocket(this);
             
             connect(clientSocket, &QTcpSocket::readyRead, this, [=](){
-                QDataStream stream(clientSocket);
-                
-                int msgType;
-                stream >> msgType;
-                
-                if (msgType == 1) {
-                    QString text;
-                    stream >> text;
-                    message->setText(text);
-                    qDebug() << "Text received (client):" << text;
+            QDataStream stream(clientSocket);
+            
+            int msgType;
+            stream >> msgType;
+            
+            if (msgType == 1) {
+
+                QString text;
+                stream >> text;
+            
+                message->setText(text);
+
+                qDebug() << "Text received:" << text;
+
+                //  فقط شهاب‌سنگ دریافتی نابود می‌شود 
+                for (int i = 0; i < RipenedNames.size(); i++) {
+
+                    if (RipenedNames[i] == text) {
+
+                        qDebug() << "Received meteorite found!";
+                        qDebug() << "ID:" << i;
+                        qDebug() << "Name:" << RipenedNames[i];
+
+                        if (RipenedME[i]) {
+                            RipenedME[i]->setEnabled(false);
+                        }
+
+                        RipenedNames[i].clear();
+                        Ripened[i] = false;
+
+                        qDebug() << "Remote meteorite destroyed!";
+
+                        break;
+                    }
                 }
+            }
                 else if (msgType == 2) {
-                    int id;
-                    QVector3D position;
-                    bool direction;
-                    stream >> id >> position >> direction;
+                    // int id;
+                    // QVector3D position;
+                    // bool direction;
+                    stream.startTransaction();
+                    MeteoriteData data;
+                    stream >> data.id;
+                    stream >> data.name;
+                    stream >> data.position;
+                    stream >> data.direction;
+
+                    if (!stream.commitTransaction()) {
+                    return;
+                    }
                     
-                    qDebug() << "Meteorite received! ID:" << id;
+                    qDebug() << "Meteorite received!";
+                    qDebug() << "ID:" << data.id;
+                    qDebug() << "NAME:" << data.name;
+                    qDebug() << "POSITION:" << data.position;
+                    qDebug() << "DIRECTION:" << data.direction;
                     
-                    if (id >= 0 && id < RipenedME.size() && RipenedME[id] && RipenedMT[id]) {
-                        auto *transform = RipenedMT[id];
-                        auto *meteoriteE = RipenedME[id];
+                    if (data.id >= 0 && data.id < RipenedME.size() && RipenedME[data.id] && RipenedMT[data.id]) {
+
+                        RipenedNames[data.id] = data.name;
+                        Ripened[data.id] = true;
+
+                        auto *transform = RipenedMT[data.id];
+                        auto *meteoriteE = RipenedME[data.id];
+
                         transform->setTranslation(QVector3D(15.0f, 0, 0));
                         meteoriteE->setEnabled(true);
                         
                         auto *timer = new QTimer(this);
+
                         connect(timer, &QTimer::timeout, this, [=]() {
                             QVector3D pos = transform->translation();
                             pos.setX(pos.x() - 0.05f);
                             transform->setTranslation(pos);
-                            if (pos.x() <= position.x()) {
+
+                            if (pos.x() <= data.position.x()) {
                                 timer->stop();
                                 timer->deleteLater();
                             }
                         });
+
                         timer->start(16);
                     }
                 }
@@ -443,6 +561,7 @@ MainWindow::MainWindow(QWidget *parent)
                 MeteoriteData meteoriteData;
 
                 meteoriteData.id = i;
+                meteoriteData.name = meteoriteNames[i];
                 meteoriteData.position = meteoriteTransforms[i]->translation();
                 meteoriteData.direction = true;
 
@@ -450,11 +569,13 @@ MainWindow::MainWindow(QWidget *parent)
                     QDataStream stream(clientSocket);
                     stream << 2;  // نوع پیام: شهاب‌سنگ
                     stream << meteoriteData.id;
+                    stream << meteoriteData.name;
                     stream << meteoriteData.position;
                     stream << meteoriteData.direction;
                     meteoriteFired[i] = true;
                     qDebug() << "Meteorite sent! ID:" << i;
                 }
+
                 auto *transform = meteoriteTransforms[i];
                 auto *meteoriteE = meteoriteEntities[i];
 
