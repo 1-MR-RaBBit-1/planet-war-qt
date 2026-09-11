@@ -5,7 +5,7 @@ project(client)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network 3DCore 3DExtras)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network 3DCore 3DExtras 3DRender)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
